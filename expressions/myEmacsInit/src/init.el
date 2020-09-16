@@ -1,6 +1,8 @@
 ;; ===================================================================
+(setq-default myEmacsInit "~/.config/nixpkgs/expressions/myEmacsInit")
+
 ;; Set custom.el path
-(setq-default custom-file "~/nixExprs/src/custom.el")
+(setq-default custom-file (concat myEmacsInit "/src/custom.el"))
 
 ;; Minimal UI
 (scroll-bar-mode -1)
