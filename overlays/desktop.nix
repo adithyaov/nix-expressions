@@ -8,6 +8,8 @@ self: super: {
       cacert
       tree
       haskellDev
+      openssh
+      perl532Packages.NetOpenSSH
     ];
     meta.priority = 0;
   };
