@@ -8,6 +8,7 @@ self: super: {
       cacert
       tree
       haskellDev
+      emacsEnv
       openssh
       perl532Packages.NetOpenSSH
     ];
@@ -15,11 +16,19 @@ self: super: {
   };
   haskellDev = with self.haskellPackages; super.buildEnv {
       name = "haskellDev";
-      paths = with self.pkgs; [
+      paths =
+        let
+          callLocalHaskPkg =
+            path: self.haskellPackages.callPackage path {};
+          localPkgs = builtins.map callLocalHaskPkg [
+            ../expressions/hindent
+          ];
+        in with self.pkgs; [
+          cabal2nix
           ghc
           cabal-install
-        ] ++ (with haskellPackages; [
           ghcid
-        ]);
+        ] ++ localPkgs;
+      meta.priority = 1;
   };
 }

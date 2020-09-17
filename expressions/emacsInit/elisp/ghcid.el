@@ -152,6 +152,6 @@ you ran this command from."
   (kill-buffer (ghcid-buffer-name)))
 
 
-; (provide 'ghcid)
+(provide 'ghcid)
 
 ;;; ghcid.el ends here

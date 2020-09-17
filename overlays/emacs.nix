@@ -4,13 +4,14 @@ self: super: {
     paths =
       (with self;
         [ emacs26 ]) ++
-      [ (import ../expressions/myEmacsFonts.nix)
-        (import ../expressions/myEmacsInit) ] ++
+      [ (import ../expressions/emacsFonts.nix)
+        (import ../expressions/emacsInit) ] ++
       (with self.emacs26Packages;
       [ ahk-mode
         column-enforce-mode
         eshell-git-prompt
         csharp-mode
+        haskell-mode
         highlight-indent-guides
         solarized-theme
         impatient-mode

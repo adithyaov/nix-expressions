@@ -1,5 +1,5 @@
 ;; ===================================================================
-(setq-default myEmacsInit "~/.config/nixpkgs/expressions/myEmacsInit")
+(setq myEmacsInit "~/.config/nixpkgs/expressions/myEmacsInit")
 
 ;; Set custom.el path
 (setq-default custom-file (concat myEmacsInit "/src/custom.el"))
@@ -441,16 +441,6 @@ Version 2018-04-02T14:38:04-07:00"
 
 (global-set-key (kbd "M-d") 'xah-shrink-whitespaces)
 
-;; Goto matching paren
-(defun match-paren (arg)
-  "Go to the matching paren if on a paren; otherwise insert %."
-  (interactive "p")
-  (cond ((looking-at "\\s(") (forward-list 1) (backward-char 1))
-	((looking-at "\\s)") (forward-char 1) (backward-list 1))
-	(t (self-insert-command (or arg 1)))))
-
-(global-set-key "%" 'match-paren)
-
 ;; Org mode work flow - Kanban style
 
 (setq org-todo-keywords
@@ -489,41 +479,94 @@ Version 2018-04-02T14:38:04-07:00"
   "Check if the current line is empty"
   (if (eq (line-beginning-position) (line-end-position)) t))
 
-(defun go-till-empty-line (arg)
+(defun smart-jump (arg)
   "Go to current position + till. If a newline if found, stop"
   (or arg (setq arg 50))
   (setq avg-num-line-chars (* arg 45))
   (if (> arg 0)
-      (re-search-forward "^\n" (+ (point) avg-num-line-chars) 'end))
+      (cond ((looking-at "\\s(") (forward-list 1) (backward-char 1))
+	    (t (re-search-forward "^\n" (+ (point) avg-num-line-chars) 'end))))
   (if (< arg 0)
-      (re-search-backward "^\n" (+ (point) avg-num-line-chars) 'end)))
+      (cond ((looking-at "\\s)") (forward-char 1) (backward-list 1))
+	    (t (re-search-backward "^\n" (+ (point) avg-num-line-chars) 'end)))))
 
-(global-set-key (kbd "M-n") (lambda () (interactive) (go-till-empty-line 20)))
-(global-set-key (kbd "M-p") (lambda () (interactive) (go-till-empty-line -20)))
+(global-set-key (kbd "M-n") (lambda () (interactive) (smart-jump 20)))
+(global-set-key (kbd "M-p") (lambda () (interactive) (smart-jump -20)))
 
+;; Hindent
+
+
+(progn
+  (require 'hindent)
+  (add-hook 'haskell-mode-hook #'hindent-mode))
+
+;; =================================================================
+;; Try to work with both, hindent and CPP
+
+(progn
+  (require 'hindent)
+  (setq alist-haskell-cpp
+	'(("INLINE_LATE" . "INLINE [0]")
+	  ("INLINE_NORMAL" . "INLINE [1]")
+	  ("INLINE_EARLY" . "INLINE [2]")))
+  (defun haskell-desugar-cpp-decl (assoc-arr)
+    (interactive)
+    (let ((start-end (hindent-decl-points)))
+      (when start-end
+	(let ((beg (car start-end))
+	      (end (cdr start-end)))
+	  (dolist (elem assoc-arr)
+	    (replace-string (car elem) (cdr elem) nil beg end))))))
+  (defun haskell-sugar-cpp-decl (assoc-arr)
+    (interactive)
+    (let ((start-end (hindent-decl-points)))
+      (when start-end
+	(let ((beg (car start-end))
+	      (end (cdr start-end)))
+	  (dolist (elem assoc-arr)
+	    (replace-string (cdr elem) (car elem) nil beg end))))))
+  (defun hindent-reformat-decl-cpp (&optional assoc-arr)
+    (interactive)
+    (progn
+      (unless assoc-arr (setq assoc-arr alist-haskell-cpp))
+      (haskell-desugar-cpp-decl assoc-arr)
+      (hindent-reformat-decl)
+      (haskell-sugar-cpp-decl assoc-arr)))
+  (defun hindent-reformat-decl-or-fill-cpp (justify)
+    (interactive (progn
+		   (barf-if-buffer-read-only)
+		   (list (if current-prefix-arg 'full))))
+    (if (hindent-in-comment)
+	(fill-paragraph justify t)
+      (progn
+	  (setq move-point (point))
+	  (hindent-reformat-decl-cpp)
+	  (goto-char move-point))))
+  (define-key hindent-mode-map [remap fill-paragraph]
+    #'hindent-reformat-decl-or-fill-cpp))
 
 ;; GHCID
 
-;(require 'projectile)
-;(require 'ghcid)
-;
-;(defun set-default-target ()
-;  "Set a default ghcid-target"
-;  (setq ghcid-target
-;	(concat "lib:"
-;		(-last 's-present? (s-split "/" (projectile-project-root))))))
-;
-;(defun ghcid-projectile ()
-;    "Start a ghcid process in a new window. Kills any existing sessions.
-;
-;The process will be started in the directory of the buffer where
-;you ran this command from."
-;    (interactive)
-;    (set-default-target)
-;    (ghcid-start (projectile-project-root)))
-;
-;;; Lisp coding stype
-;(setq indent-tabs-mode nil)
+(require 'projectile)
+(require 'ghcid)
+
+(defun set-default-target ()
+  "Set a default ghcid-target"
+  (setq ghcid-target
+	(concat "lib:"
+		(-last 's-present? (s-split "/" (projectile-project-root))))))
+
+(defun ghcid-projectile ()
+    "Start a ghcid process in a new window. Kills any existing sessions.
+
+The process will be started in the directory of the buffer where
+you ran this command from."
+    (interactive)
+    (set-default-target)
+    (ghcid-start (projectile-project-root)))
+
+;; Lisp coding stype
+(setq indent-tabs-mode nil)
 
 (require 'cl-indent)
 (setq lisp-indent-function #'common-lisp-indent-function)
